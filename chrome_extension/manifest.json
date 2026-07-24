@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Enterprise License Validator & Storage Client",
+  "version": "1.0.0",
+  "description": "Production-grade Chrome Extension integrated with Enterprise License Management System (ELMS)",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ELMS License Manager"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

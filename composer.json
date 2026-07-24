@@ -1,0 +1,22 @@
+{
+    "name": "enterprise/license-management-system",
+    "description": "Enterprise Grade SaaS Software License Management Platform",
+    "type": "project",
+    "license": "Proprietary",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-json": "*"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}

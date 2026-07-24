@@ -1,0 +1,34 @@
+# Environment & Sensitive Credentials
+.env
+.env.local
+.env.*.local
+*.env
+
+# Dependency Directories
+/vendor/
+
+# Storage & Upload Directories (keep folder structure, exclude uploads/logs)
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/backups/*
+!/storage/backups/.gitkeep
+
+# Temporary / OS / IDE Files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+.idea/
+.vscode/
+*.bak
+
+# Temporary / Development Scripts
+api_test.php
+check_plans.php
+full_e2e_verification.php
+composer-setup.php

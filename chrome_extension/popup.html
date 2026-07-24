@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELMS Extension License</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --border-color: #334155;
+        }
+
+        body {
+            width: 320px;
+            margin: 0;
+            padding: 16px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: rgba(99, 102, 241, 0.2);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: var(--text-sub);
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-box {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .status-box.active {
+            background-color: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--success-color);
+            color: #6ee7b7;
+            display: block;
+        }
+
+        .status-box.error {
+            background-color: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger-color);
+            color: #fca5a5;
+            display: block;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .upload-section {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h3>⚡ ELMS License Client</h3>
+        <span class="badge" id="app-badge">V1.0</span>
+    </div>
+
+    <div id="activation-form">
+        <div class="form-group">
+            <label for="license-key-input">License Key</label>
+            <input type="text" id="license-key-input" placeholder="GB-XXXX-XXXX-XXXX-XXXX" value="GB-UZ57-77Y5-MKX8-B6YT">
+        </div>
+        <button id="btn-activate">Activate License</button>
+    </div>
+
+    <div id="status-box" class="status-box"></div>
+
+    <div class="upload-section" id="upload-section" style="display:none;">
+        <label>Authorize & Upload File</label>
+        <input type="file" id="file-input" style="margin-bottom:8px;">
+        <button id="btn-upload" style="background:#10b981;">Authorize & Send Upload</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

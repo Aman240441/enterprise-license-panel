@@ -1,0 +1,161 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Enterprise License Management System REST API",
+    "description": "Production-grade multi-product software licensing platform REST API specification.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Architecture Team",
+      "email": "support@enterprise-license-manager.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost/aDMIN%20PANEL/public/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.yourdomain.com/api/v1",
+      "description": "Production Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter JWT access token"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Enter Product or User API Key"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "status": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "Operation executed successfully" },
+          "data": { "type": "object" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LicenseKey": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 101 },
+          "uuid": { "type": "string", "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d" },
+          "product_id": { "type": "integer", "example": 1 },
+          "license_key": { "type": "string", "example": "GB-UZ57-77Y5-MKX8-B6YT" },
+          "status": { "type": "string", "enum": ["active", "inactive", "expired", "revoked", "suspended"], "example": "active" },
+          "allowed_devices": { "type": "integer", "example": 3 },
+          "current_devices": { "type": "integer", "example": 1 },
+          "expiry_date": { "type": "string", "format": "date-time", "example": "2027-01-01T00:00:00Z" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Platform System Health Check",
+        "responses": {
+          "200": {
+            "description": "Operational Status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "summary": "User & Admin Authentication",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "admin@system.com" },
+                  "password": { "type": "string", "example": "Admin@123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "JWT Token Issued" },
+          "401": { "description": "Invalid Credentials / Account Locked" }
+        }
+      }
+    },
+    "/license/activate": {
+      "post": {
+        "summary": "Client Hardware & Browser Activation API",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["license_key", "product_id", "device_fingerprint"],
+                "properties": {
+                  "license_key": { "type": "string", "example": "GB-UZ57-77Y5-MKX8-B6YT" },
+                  "product_id": { "type": "integer", "example": 1 },
+                  "device_fingerprint": { "type": "string", "example": "a1b2c3d4e5f67890" },
+                  "browser": { "type": "string", "example": "Chrome 125.0" },
+                  "os": { "type": "string", "example": "Windows 11" },
+                  "platform": { "type": "string", "example": "Win64" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Activation Successful - Session Token Returned" },
+          "400": { "description": "Device limit exceeded or license invalid" }
+        }
+      }
+    },
+    "/licenses/generate": {
+      "post": {
+        "summary": "Generate Single License Key",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["product_id", "plan_id"],
+                "properties": {
+                  "product_id": { "type": "integer", "example": 1 },
+                  "plan_id": { "type": "integer", "example": 2 },
+                  "customer_name": { "type": "string", "example": "John Doe" },
+                  "customer_email": { "type": "string", "example": "john@example.com" },
+                  "prefix": { "type": "string", "example": "GB" },
+                  "allowed_devices": { "type": "integer", "example": 3 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "License Generated Successfully" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: enterprise-license-panel
+    env: php
+    plan: free
+    buildCommand: composer install --no-dev --optimize-autoloader
+    startCommand: php -S 0.0.0.0:$PORT -t public
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_DRIVER
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: elms-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: elms-postgres
+    databaseName: enterprise_license_db
+    user: elms_user
+    plan: free
