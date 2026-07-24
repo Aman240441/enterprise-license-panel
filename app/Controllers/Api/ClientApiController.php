@@ -18,80 +18,148 @@ class ClientApiController
      * POST /api/v1/license/activate
      * Public Hardware / Browser Device Activation API for External Apps & Extensions
      */
+    /**
+     * POST /api/v1/license/activate
+     * Public Hardware / Browser Device Activation API for External Apps & Extensions
+     */
     public function activate(Request $request): void
     {
         $body = $request->getBody();
 
-        // 1. Validate Input
-        $validator = Validator::make($body, [
-            'license_key'        => 'required',
-            'product_id'         => 'required|integer',
-            'device_fingerprint' => 'required'
-        ]);
+        // 1. Validate Input (license_key & device_fingerprint required)
+        $licenseKey = isset($body['license_key']) ? trim((string)$body['license_key']) : '';
+        $deviceFingerprint = isset($body['device_fingerprint']) ? trim((string)$body['device_fingerprint']) : '';
+        $productId = isset($body['product_id']) && is_numeric($body['product_id']) ? (int)$body['product_id'] : 0;
 
-        if ($validator->fails()) {
-            ResponseHelper::error("Validation failed", 422, $validator->errors());
+        if (empty($licenseKey)) {
+            ResponseHelper::error("license_key is required.", 422, [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => 'empty(license_key)'
+                ]
+            ]);
         }
 
-        $licenseKey = trim($body['license_key']);
-        $productId = (int) $body['product_id'];
-
-        // 2. Fetch Product & Verify Status
-        $product = DatabaseConnection::fetchOne("SELECT * FROM `products` WHERE id = ?", [$productId]);
-        if (!$product || $product['status'] !== 'active') {
-            ResponseHelper::error("Product is invalid, inactive, or deprecated.", 400);
+        if (empty($deviceFingerprint)) {
+            ResponseHelper::error("device_fingerprint is required.", 422, [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => 'empty(device_fingerprint)'
+                ]
+            ]);
         }
 
-        // 3. Fetch License Key & Verify Product Binding
+        // 2. Lookup License Key in Database (Case-Insensitive & Trimmed)
         $license = LicenseModel::findByKey($licenseKey);
         if (!$license) {
             AuditLoggerService::log(null, 'client.activate_failed', "Invalid license key attempt: {$licenseKey}", 'licenses', null, $body, 404);
-            ResponseHelper::notFound("License key is invalid.");
+            ResponseHelper::error("License key '{$licenseKey}' was not found in the system database.", 404, [
+                'rejection_detail' => [
+                    'file' => 'LicenseModel.php',
+                    'function' => 'findByKey',
+                    'line' => 34,
+                    'condition' => "SELECT FROM licenses WHERE UPPER(TRIM(license_key)) = '" . strtoupper($licenseKey) . "' returned 0 rows"
+                ]
+            ]);
         }
 
-        if ((int)$license['product_id'] !== $productId) {
+        // 3. Verify Bound Product & Optional Product Binding Match
+        $boundProductId = (int)$license['product_id'];
+        $product = DatabaseConnection::fetchOne("SELECT * FROM `products` WHERE id = ?", [$boundProductId]);
+        if (!$product || ($product['status'] ?? '') !== 'active') {
+            ResponseHelper::error("Product bound to license is inactive or invalid.", 400, [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "product_id {$boundProductId} status is not active"
+                ]
+            ]);
+        }
+
+        if ($productId > 0 && $productId !== $boundProductId) {
             AuditLoggerService::log(null, 'client.activate_mismatch', "License key product mismatch: {$licenseKey}", 'licenses', $license['id'], $body, 400);
-            ResponseHelper::error("License key is not authorized for this software product.", 400);
+            ResponseHelper::error("License key is registered for product '{$license['product_name']}' (ID: {$boundProductId}), but request passed product_id {$productId}.", 400, [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "request product_id ({$productId}) != license product_id ({$boundProductId})"
+                ]
+            ]);
         }
 
         // 4. Verify License Status (Revoked, Suspended, Inactive, Expired)
         if ($license['status'] === 'revoked') {
-            ResponseHelper::forbidden("License key has been revoked by administration.");
+            ResponseHelper::forbidden("License key has been revoked by administration.", [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "license status == 'revoked'"
+                ]
+            ]);
         }
 
         if ($license['status'] === 'suspended') {
-            ResponseHelper::forbidden("License key is currently suspended.");
+            ResponseHelper::forbidden("License key is currently suspended.", [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "license status == 'suspended'"
+                ]
+            ]);
         }
 
         if ($license['status'] === 'inactive') {
-            ResponseHelper::forbidden("License key is inactive.");
+            ResponseHelper::forbidden("License key is inactive.", [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "license status == 'inactive'"
+                ]
+            ]);
         }
 
         // Check Expiration
         if (!empty($license['expiry_date']) && strtotime($license['expiry_date']) <= time()) {
             LicenseModel::updateStatus($license['id'], 'expired');
-            ResponseHelper::forbidden("License key expired on " . date('Y-m-d H:i:s', strtotime($license['expiry_date'])));
+            ResponseHelper::forbidden("License key expired on " . date('Y-m-d H:i:s', strtotime($license['expiry_date'])), [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'activate',
+                    'line' => __LINE__,
+                    'condition' => "expiry_date (" . $license['expiry_date'] . ") <= current_time"
+                ]
+            ]);
         }
 
-        // 5. Execute Device Activation
+        // 5. Execute Device Activation & Issue Session Token
         try {
             $activationResult = DeviceManagerService::activateDevice($license, $body);
 
             AuditLoggerService::log(
                 null,
                 'client.activate_success',
-                "Activated device {$body['device_fingerprint']} for key {$licenseKey}",
+                "Activated device {$deviceFingerprint} for key {$licenseKey}",
                 'licenses',
                 $license['id'],
-                ['fingerprint' => $body['device_fingerprint'], 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'],
+                ['fingerprint' => $deviceFingerprint, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'],
                 200
             );
 
             ResponseHelper::success([
                 'activated'          => true,
-                'license_key'        => $licenseKey,
+                'license_key'        => $license['license_key'],
                 'status'             => 'active',
-                'product_name'       => $product['name'],
+                'product_id'         => $boundProductId,
+                'product_name'       => $license['product_name'],
                 'plan_name'          => $license['plan_name'],
                 'license_type'       => $license['license_type'],
                 'session_token'      => $activationResult['session_token'],
@@ -102,7 +170,14 @@ class ClientApiController
             ], "License activated successfully");
         } catch (Exception $e) {
             AuditLoggerService::log(null, 'client.activate_limit_exceeded', $e->getMessage(), 'licenses', $license['id'], $body, 400);
-            ResponseHelper::error($e->getMessage(), 400);
+            ResponseHelper::error($e->getMessage(), 400, [
+                'rejection_detail' => [
+                    'file' => 'DeviceManagerService.php',
+                    'function' => 'activateDevice',
+                    'line' => 43,
+                    'condition' => $e->getMessage()
+                ]
+            ]);
         }
     }
 
@@ -113,18 +188,45 @@ class ClientApiController
     public function check(Request $request): void
     {
         $body = $request->getBody();
-        $licenseKey = trim($body['license_key'] ?? '');
-        $productId = (int) ($body['product_id'] ?? 0);
+        $licenseKey = trim((string)($body['license_key'] ?? ''));
+        $productId = isset($body['product_id']) && is_numeric($body['product_id']) ? (int)$body['product_id'] : 0;
 
-        if (empty($licenseKey) || $productId <= 0) {
-            ResponseHelper::error("license_key and product_id are required.", 400);
+        if (empty($licenseKey)) {
+            ResponseHelper::error("license_key is required.", 400, [
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'check',
+                    'line' => __LINE__,
+                    'condition' => 'empty(license_key)'
+                ]
+            ]);
         }
 
         $license = LicenseModel::findByKey($licenseKey);
-        if (!$license || (int)$license['product_id'] !== $productId) {
+        if (!$license) {
             ResponseHelper::success([
                 'valid'   => false,
-                'reason'  => 'Invalid license key or product mismatch'
+                'reason'  => "License key '{$licenseKey}' not found",
+                'rejection_detail' => [
+                    'file' => 'LicenseModel.php',
+                    'function' => 'findByKey',
+                    'line' => 34,
+                    'condition' => '0 DB rows matched license_key'
+                ]
+            ], "Validation check completed");
+        }
+
+        $boundProductId = (int)$license['product_id'];
+        if ($productId > 0 && $productId !== $boundProductId) {
+            ResponseHelper::success([
+                'valid'   => false,
+                'reason'  => "Product mismatch: License is for product ID {$boundProductId}, passed {$productId}",
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'check',
+                    'line' => __LINE__,
+                    'condition' => "request product_id ({$productId}) != license product_id ({$boundProductId})"
+                ]
             ], "Validation check completed");
         }
 
@@ -132,7 +234,13 @@ class ClientApiController
             ResponseHelper::success([
                 'valid'   => false,
                 'status'  => $license['status'],
-                'reason'  => "License is {$license['status']}"
+                'reason'  => "License status is '{$license['status']}'",
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'check',
+                    'line' => __LINE__,
+                    'condition' => "status == {$license['status']}"
+                ]
             ], "Validation check completed");
         }
 
@@ -141,13 +249,20 @@ class ClientApiController
             ResponseHelper::success([
                 'valid'   => false,
                 'status'  => 'expired',
-                'reason'  => 'License key has expired'
+                'reason'  => 'License key has expired on ' . $license['expiry_date'],
+                'rejection_detail' => [
+                    'file' => 'ClientApiController.php',
+                    'function' => 'check',
+                    'line' => __LINE__,
+                    'condition' => "expiry_date ({$license['expiry_date']}) <= current_time"
+                ]
             ], "Validation check completed");
         }
 
         ResponseHelper::success([
             'valid'              => true,
             'status'             => 'active',
+            'product_id'         => $boundProductId,
             'product_name'       => $license['product_name'],
             'plan_name'          => $license['plan_name'],
             'license_type'       => $license['license_type'],

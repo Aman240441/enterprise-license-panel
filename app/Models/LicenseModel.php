@@ -23,14 +23,15 @@ class LicenseModel
 
     public static function findByKey(string $key): ?array
     {
+        $cleanKey = strtoupper(trim($key));
         return DatabaseConnection::fetchOne("
-            SELECT l.*, p.name as product_name, p.slug as product_slug, p.secret_key as product_secret,
+            SELECT l.*, p.name as product_name, p.slug as product_slug, p.secret_key as product_secret, p.status as product_status,
                    lp.name as plan_name, lp.slug as plan_slug
             FROM `licenses` l
             JOIN `products` p ON l.product_id = p.id
             JOIN `license_plans` lp ON l.plan_id = lp.id
-            WHERE l.license_key = ?
-        ", [$key]);
+            WHERE UPPER(TRIM(l.license_key)) = ?
+        ", [$cleanKey]);
     }
 
     /**
