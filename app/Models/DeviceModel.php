@@ -9,9 +9,10 @@ class DeviceModel
 {
     public static function findByFingerprint(int $licenseId, string $fingerprint): ?array
     {
+        $cleanFingerprint = strtoupper(trim($fingerprint));
         return DatabaseConnection::fetchOne("
-            SELECT * FROM `devices` WHERE `license_id` = ? AND `device_fingerprint` = ? AND `is_active` = 1
-        ", [$licenseId, $fingerprint]);
+            SELECT * FROM `devices` WHERE `license_id` = ? AND UPPER(TRIM(`device_fingerprint`)) = ? AND `is_active` = 1
+        ", [$licenseId, $cleanFingerprint]);
     }
 
     public static function getActiveDevicesForLicense(int $licenseId): array

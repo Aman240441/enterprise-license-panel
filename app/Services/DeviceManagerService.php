@@ -41,7 +41,13 @@ class DeviceManagerService
         // 2. Check Device Limit Count for NEW Devices
         $currentCount = DeviceModel::countActiveDevices($licenseId);
         if ($currentCount >= $allowedDevices) {
-            throw new Exception("Activation Failed: Allowed device limit reached ({$currentCount}/{$allowedDevices} devices active). Please deactivate an existing device first.");
+            if ($allowedDevices === 1) {
+                // For single-device allowed licenses, rebind the slot to the new device session
+                DatabaseConnection::query("UPDATE `devices` SET `is_active` = 0 WHERE `license_id` = ?", [$licenseId]);
+                $currentCount = 0;
+            } else {
+                throw new Exception("Activation Failed: Allowed device limit reached ({$currentCount}/{$allowedDevices} devices active). Please deactivate an existing device first.");
+            }
         }
 
         // 3. Register New Device
