@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    let API_BASE_URL = await getStoredValue('api_base_url') || 'http://localhost:8000';
+    let API_BASE_URL = await getStoredValue('api_base_url') || 'https://enterprise-license-panel-production.up.railway.app';
 
     const licenseInput = document.getElementById('license-key-input');
 

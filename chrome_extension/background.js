@@ -1,5 +1,5 @@
 // Background Service Worker for Chrome Extension
-let API_URL = 'http://localhost:8000';
+let API_URL = 'https://enterprise-license-panel-production.up.railway.app';
 
 chrome.storage.local.get(['api_base_url'], (res) => {
     if (res.api_base_url) API_URL = res.api_base_url;
