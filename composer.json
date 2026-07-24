@@ -6,6 +6,8 @@
     "require": {
         "php": ">=8.2",
         "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-pdo_mysql": "*",
         "ext-json": "*"
     },
 
